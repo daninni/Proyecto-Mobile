@@ -52,3 +52,6 @@ Para este trabajo utilicé IA (ChatGPT/Gemini) principalmente para:
 - Solucionar errores de configuración con la cámara en Expo.
 - Generar algunas ideas para los estilos CSS de las tarjetas.
 -Añadir fuentes nuevas.
+
+## Enlace a YT
+https://youtube.com/shorts/sxNwxo1do08?si=wZcOmD0FK_sA5qKL
