@@ -1,57 +1,66 @@
-# Evaluación 2 - App de Tareas 
+# Evaluación 3 - App Todo
 
- App de lista de tareas (To-Do List) que incluye Login y permite guardar fotos y ubicación en cada tarea.
+App To-Do List con login que se conecta a una API.
 
-## Integrantes del Grupo
+## Integrante
 
-- **Daniela Bravo** 
+- **Daniela Bravo**
 
-## De qué trata la App
+## Descripción
 
-La aplicación permite iniciar sesión y gestionar una lista de pendientes. Lo principal es:
+Aplicación móvil que permite iniciar sesión y gestionar tareas personales. Las tareas se guardan en un servidor mediante una API.
 
-- Tiene un **Login funcional**.
-- Se pueden **crear tareas nuevas**.
-- **Cámara**: Al crear una tarea, se puede sacar una foto real.
-- **Mapa**: Guarda la ubicación (ciudad-pais) de donde se creó la tarea.
-- Las tareas no se borran al cerrar la app (Usamos AsyncStorage).
-- Tiene un **diseño personalizado** con palette rosada y fuentes distintas.
+### Funcionalidades principales:
 
-## Cómo probarla
+- **Login** con email y contraseña (conexión con API real)
+- **Crear tareas** con título, foto y ubicación GPS
+- **Editar tareas** para cambiar el título
+- **Marcar como completada/pendiente**
+- **Eliminar tareas**
+- **Navegación con tabs**: Home, Tareas, Perfil
 
-Para correr el proyecto se necesita tener **Node.js** instalado.
+## Instalación
 
-1. Clonar el repo o descargar la carpeta.
-2. Abrir la terminal en la carpeta del proyecto.
-3. Instalar las librerías:
+1. Clonar o descargar el proyecto
+2. Abrir terminal en la carpeta del proyecto
+3. Instalar dependencias:
 ```bash
 npm install
 ```
-4. Iniciar la aplicación:
+4. Instalar librerías de Expo:
 ```bash
-npx expo start --clear
+npm install expo-image-picker expo-location
 ```
-5. Escanear el QR con la app **"Expo Go"** en el celular.
+5. Iniciar la app:
+```bash
+npm start
+```
+6. Escanear el QR con **Expo Go** en el celular
 
-### Datos para probar el Login:
-- **Email**: (Cualquiera sirve, ej: `daniela@123.com`)
-- **Clave**: `1234`
+## Credenciales de prueba
 
-## Detalles Técnicos
+- **Email**: `dani@example.com`
+- **Contraseña**: `password123`
 
-- Utilicé **React Native** con **Expo**.
-- El lenguaje es **TypeScript**.
-- Para la navegación utilicé **Expo Router** (sistema de carpetas).
-- Librerías extra: `expo-image-picker` (cámara), `expo-location` (gps) y `async-storage`.
 
-## Sobre el desarrollo y la IA
+## API
 
-Para este trabajo utilicé IA (ChatGPT/Gemini) principalmente para:
+La app se conecta a: `https://todo-list.dobleb.cl`
 
-- Entender cómo funcionaba AsyncStorage para guardar los arreglos.
-- Solucionar errores de configuración con la cámara en Expo.
-- Generar algunas ideas para los estilos CSS de las tarjetas.
--Añadir fuentes nuevas.
+Endpoints utilizados:
+- POST `/auth/login` - Login
+- GET `/todos` - Listar tareas
+- POST `/todos` - Crear tarea
+- PATCH `/todos/:id` - Editar/completar tarea
+- DELETE `/todos/:id` - Eliminar tarea
 
-## Enlace a YT
-https://youtube.com/shorts/sxNwxo1do08?si=wZcOmD0FK_sA5qKL
+## Video demostrativo
+
+**(https://youtube.com/shorts/EY5UrvtPT7Y?feature=share)**
+
+## Uso de IA
+
+Para este proyecto usé la IA para:
+- Solucionar errores de permisos de cámara y ubicación
+- Ayuda con TypeScript y tipado de interfaces
+- Ideas para mejorar el diseño de las tarjetas

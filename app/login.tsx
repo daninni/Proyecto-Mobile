@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts } from 'expo-font';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { useAuth } from '@/context/auth-context';
 
 // componente pantalla de login
 export default function LoginScreen() {
@@ -17,21 +17,17 @@ export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-
     const router = useRouter();
+    const { login, loading } = useAuth();
 
     //  iniciar sesión
     const handleLogin = async () => {
         setError('');
-
-        //  validar password
-        if (password === '1234') {
-            // guardado en AsyncStorage
-            await AsyncStorage.setItem('usuario_actual', email);
-            
+        try {
+            await login(email, password);
             router.replace({ pathname: '/(tabs)', params: { userEmail: email } });
-        } else {
-            setError('Contraseña incorrecta');
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
         }
     };
 
@@ -59,6 +55,7 @@ export default function LoginScreen() {
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
+                editable={!loading}
             />
 
             {/* password */}
@@ -70,18 +67,22 @@ export default function LoginScreen() {
                 secureTextEntry 
                 value={password}
                 onChangeText={setPassword}
+                editable={!loading}
             />
 
-            {/* mostrar error */}
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-            {/* boton iniciar sesion */}
+
             <TouchableOpacity
-                style={[styles.loginButton, { opacity: (!email || !password) ? 0.5 : 1 }]}
+                style={[styles.loginButton, { opacity: (!email || !password || loading) ? 0.5 : 1 }]}
                 onPress={handleLogin}
-                disabled={!email || !password}
-                >
+                disabled={!email || !password || loading}
+            >
+                {loading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
                     <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
+                )}
             </TouchableOpacity>
     
         </View>
