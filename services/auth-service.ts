@@ -22,15 +22,10 @@ const client = axios.create({
 
 async function login(payload: LoginPayload): Promise<LoginResponse> {
     try {
-        console.log('LOGIN REQUEST:', payload);
         const response = await client.post<LoginResponse>("/login", payload);
-        console.log('LOGIN RESPONSE:', response.data);
         return response.data;
     } catch (error) {
-        console.log('LOGIN ERROR:', error);
         if (isAxiosError(error) && error.response) {
-            console.log('API Error Status:', error.response.status);
-            console.log('API Error Data:', error.response.data);
             if (error.response.status === 401) {
                 throw new Error("Credenciales inválidas.");
             }
@@ -41,15 +36,10 @@ async function login(payload: LoginPayload): Promise<LoginResponse> {
 
 async function register(payload: RegisterPayload): Promise<RegisterResponse> {
     try {
-        console.log('REGISTER REQUEST:', payload);
         const response = await client.post<RegisterResponse>("/register", payload);
-        console.log('REGISTER RESPONSE:', response.data);
         return response.data;
     } catch (error) {
-        console.log('REGISTER ERROR:', error);
         if (isAxiosError(error) && error.response) {
-            console.log('API Error Status:', error.response.status);
-            console.log('API Error Data:', error.response.data);
             if (error.response.status === 409) {
                 throw new Error("El email ya está en uso.");
             }

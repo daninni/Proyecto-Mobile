@@ -1,11 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
-import * as ImagePicker from 'expo-image-picker';
-import * as Location from 'expo-location';
-import React, { useEffect, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Modal } from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, Alert, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '@/context/auth-context';
-import { todoService, Todo, Location as LocationCoords } from '@/services/todo-service';
+import { useTodos } from '@/hooks/useTodos';
+import { Location as LocationCoords, Todo } from '@/services/todo-service';
 
 export default function TodoScreen() {
   const [fontsLoaded] = useFonts({
@@ -15,163 +14,107 @@ export default function TodoScreen() {
   });
 
   const { token, userEmail } = useAuth();
-  const [tasks, setTasks] = useState<Todo[]>([]);
+  const {
+    todos,
+    loading,
+    mutating,
+    uploadingImage,
+    locationNames,
+    uploadedImageUrl,
+    uploadedImageUri,
+    createTodo,
+    toggleCompletion,
+    deleteTodo,
+    updateTitle,
+    capturePhoto,
+    requestLocation,
+    uploadPhoto,
+    clearUploadedImage,
+  } = useTodos(token);
+
   const [text, setText] = useState('');
-  const [image, setImage] = useState<string | null>(null);
   const [location, setLocation] = useState<LocationCoords | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [nombreUbicacion, setNombreUbicacion] = useState<string | null>(null);
-  const [nombresPorTarea, setNombresPorTarea] = useState<Record<string, string>>({});
+  const [locationLabel, setLocationLabel] = useState<string | null>(null);
   const [editVisible, setEditVisible] = useState(false);
   const [tareaEditando, setTareaEditando] = useState<Todo | null>(null);
   const [tituloEditado, setTituloEditado] = useState('');
   const [guardandoEdicion, setGuardandoEdicion] = useState(false);
 
-  // cargar tareas
-  const cargarTareas = async () => {
-    if (!token) return;
+  const handlePhoto = async () => {
     try {
-      const tareas = await todoService.getTodos(token);
-      setTasks(tareas);
-    } catch (error) {
-      Alert.alert('Error', 'No se pudieron cargar las tareas');
-    }
-  };
-
-  // pedir permisos
-  const pedirPermisos = async () => {
-    await ImagePicker.requestCameraPermissionsAsync();
-    await Location.requestForegroundPermissionsAsync();
-  };
-
-  // tomar foto
-  const tomarFoto = async () => {
-    const permiso = await ImagePicker.requestCameraPermissionsAsync();
-    if (permiso.status !== 'granted') {
-      Alert.alert('Error', 'Se necesita permiso para la cámara');
-      return;
-    }
-
-    const resultado = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.5,
-      cameraType: ImagePicker.CameraType.back,
-    });
-
-    if (!resultado.canceled && resultado.assets && resultado.assets.length > 0) {
-      setImage(resultado.assets[0].uri);
-    }
-  };
-
-  // obtener ubicación
-  const obtenerUbicacion = async () => {
-    const permiso = await Location.requestForegroundPermissionsAsync();
-    if (permiso.status !== 'granted') {
-      Alert.alert('Error', 'Se necesita permiso para la ubicación');
-      return;
-    }
-
-    try {
-      const ubicacion = await Location.getCurrentPositionAsync({});
-      const coords = {
-        latitude: ubicacion.coords.latitude,
-        longitude: ubicacion.coords.longitude,
-      };
-      setLocation(coords);
-
-      // obtener nombre de la ciudad
-      try {
-        const resultados = await Location.reverseGeocodeAsync(coords);
-        if (resultados.length > 0) {
-          const r = resultados[0];
-          const partes = [r.name, r.street, r.city, r.region, r.country].filter(Boolean);
-          const nombre = (partes.slice(0, 2).join(', ') || 'Ubicación');
-          setNombreUbicacion(nombre);
-          Alert.alert('Listo', `Ubicación guardada: ${nombre}`);
-          return;
-        }
-      } catch (e) {
-        // si falla, no pasa nada
+      const result = await capturePhoto();
+      if (result) {
+        await uploadPhoto(result);
       }
-      setNombreUbicacion(null);
-      Alert.alert('Listo', 'Ubicación guardada');
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo obtener la ubicación');
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Error al procesar foto');
     }
   };
 
-  // agregar tarea
-  const agregarTarea = async () => {
-    if (!text || !token) {
+
+
+  const handleLocation = async () => {
+    try {
+      const { coords, label } = await requestLocation();
+      setLocation(coords);
+      setLocationLabel(label ?? null);
+      Alert.alert('Listo', label ? `Ubicación guardada: ${label}` : 'Ubicación guardada');
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'No se pudo obtener la ubicación');
+    }
+  };
+
+  const handleAdd = async () => {
+    const title = text.trim();
+    if (!title) {
       Alert.alert('Error', 'Añade un título a la tarea');
       return;
     }
+    if (!token) {
+      Alert.alert('Sesión', 'Inicia sesión nuevamente');
+      return;
+    }
 
-    setLoading(true);
     try {
-      const nuevaTarea = await todoService.createTodo(token, {
-        title: text,
-        completed: false,
-        location: location || undefined,
-        photoUri: image || undefined,
-      });
-
-      setTasks([...tasks, nuevaTarea]);
+      await createTodo(title, location);
       setText('');
-      setImage(null);
       setLocation(null);
-      setNombreUbicacion(null);
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo crear la tarea');
-    } finally {
-      setLoading(false);
+      setLocationLabel(null);
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'No se pudo crear la tarea');
     }
   };
 
-  // marcar completada
-  const marcarCompletada = async (id: string, completed: boolean) => {
-    if (!token) return;
+  const handleToggle = async (item: Todo) => {
     try {
-      const tareaActualizada = await todoService.updateTodo(token, id, {
-        completed: !completed,
-      });
-
-      setTasks(tasks.map(t => t.id === id ? tareaActualizada : t));
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo actualizar la tarea');
+      await toggleCompletion(item);
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'No se pudo actualizar la tarea');
     }
   };
 
-  // eliminar tarea
-  const eliminarTarea = async (id: string) => {
-    if (!token) return;
+  const handleDelete = async (id: string) => {
     try {
-      await todoService.deleteTodo(token, id);
-      setTasks(tasks.filter(t => t.id !== id));
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo eliminar la tarea');
+      await deleteTodo(id);
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'No se pudo eliminar la tarea');
     }
   };
 
-  // abrir modal de edición
   const abrirEdicion = (item: Todo) => {
     setTareaEditando(item);
     setTituloEditado(item.title);
     setEditVisible(true);
   };
 
-  // cancelar edición
   const cancelarEdicion = () => {
     setEditVisible(false);
     setTareaEditando(null);
     setTituloEditado('');
   };
 
-  // guardar edición
   const guardarEdicion = async () => {
-    if (!token || !tareaEditando) return;
+    if (!tareaEditando) return;
     const nuevoTitulo = tituloEditado.trim();
     if (!nuevoTitulo) {
       Alert.alert('Validación', 'El título no puede estar vacío.');
@@ -179,55 +122,15 @@ export default function TodoScreen() {
     }
     setGuardandoEdicion(true);
     try {
-      const actualizada = await todoService.updateTodo(token, tareaEditando.id, { title: nuevoTitulo });
-      setTasks(prev => prev.map(t => (t.id === actualizada.id ? actualizada : t)));
+      await updateTitle(tareaEditando.id, nuevoTitulo);
       cancelarEdicion();
       Alert.alert('Éxito', 'Tarea modificada');
     } catch (e) {
-      Alert.alert('Error', 'No se pudo modificar la tarea');
+      Alert.alert('Error', e instanceof Error ? e.message : 'No se pudo modificar la tarea');
     } finally {
       setGuardandoEdicion(false);
     }
   };
-
-  useEffect(() => {
-    cargarTareas();
-    pedirPermisos();
-  }, [token]);
-
-  useEffect(() => {
-    const cargarNombres = async () => {
-      const pendientes = tasks.filter(t => t.location && !nombresPorTarea[t.id]);
-      if (!pendientes.length) return;
-
-      const entradas = await Promise.all(
-        pendientes.map(async (t) => {
-          const loc = t.location as { latitude: number; longitude: number };
-          try {
-            const resultados = await Location.reverseGeocodeAsync(loc);
-            if (resultados.length > 0) {
-              const r = resultados[0];
-              const partes = [r.name, r.street, r.city, r.region, r.country].filter(Boolean);
-              const nombre = (partes.slice(0, 2).join(', ') || 'Ubicación');
-              return [t.id, nombre] as const;
-            }
-          } catch (e) {
-            // Ignorar
-          }
-          return [t.id, ''] as const;
-        })
-      );
-
-      setNombresPorTarea((prev) => {
-        const next = { ...prev };
-        for (const [id, nombre] of entradas) {
-          if (nombre) next[id] = nombre;
-        }
-        return next;
-      });
-    };
-    cargarNombres();
-  }, [tasks]);
 
   if (!fontsLoaded) {
     return null;
@@ -277,41 +180,41 @@ export default function TodoScreen() {
           placeholderTextColor="#FFB6D9"
           value={text}
           onChangeText={setText}
-          editable={!loading}
+          editable={!mutating}
         />
 
         <View style={styles.buttonRow}>
-          <TouchableOpacity onPress={tomarFoto} style={styles.iconButton} disabled={loading}>
+          <TouchableOpacity onPress={handlePhoto} style={styles.iconButton} disabled={uploadingImage}>
             <Ionicons name="camera-outline" size={20} color="#FF69B4" />
             <Text style={styles.iconButtonText}>Foto</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={obtenerUbicacion} style={styles.iconButton} disabled={loading}>
+          <TouchableOpacity onPress={handleLocation} style={styles.iconButton} disabled={uploadingImage}>
             <Ionicons name="location-outline" size={20} color="#FF69B4" />
             <Text style={styles.iconButtonText}>Ubicación</Text>
           </TouchableOpacity>
         </View>
 
-        {image && (
+        {uploadedImageUrl && (
           <View style={styles.statusRow}>
             <Ionicons name="checkmark-circle" size={20} color="#FF69B4" />
-            <Text style={styles.statusText}>Imagen lista!</Text>
+            <Text style={styles.statusText}>✓ Foto subida</Text>
           </View>
         )}
         {location && (
           <View style={styles.statusRow}>
             <Ionicons name="checkmark-circle" size={20} color="#FF69B4" />
             <Text style={styles.statusText}>
-              {nombreUbicacion ?? `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`}
+              {locationLabel ?? `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`}
             </Text>
           </View>
         )}
 
         <TouchableOpacity
-          style={[styles.addButton, { opacity: (!text || loading) ? 0.5 : 1 }]}
-          onPress={agregarTarea}
-          disabled={!text || loading}
+          style={[styles.addButton, { opacity: (!text || mutating || uploadingImage) ? 0.5 : 1 }]}
+          onPress={handleAdd}
+          disabled={!text || mutating || uploadingImage}
         >
-          {loading ? (
+          {mutating ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
             <Text style={styles.addButtonText}>AGREGAR TAREA</Text>
@@ -320,13 +223,17 @@ export default function TodoScreen() {
       </View>
 
       {/* lista de tareas */}
-      {tasks.length === 0 ? (
+      {loading ? (
+        <View style={styles.emptyContainer}>
+          <ActivityIndicator size="large" color="#FF69B4" />
+        </View>
+      ) : todos.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="checkbox-outline" size={60} color="#FFB6D9" />
           <Text style={styles.emptyText}>No hay tareas aún</Text>
         </View>
       ) : (
-        tasks.map((item) => (
+        todos.map((item) => (
           <View key={item.id} style={[styles.card, item.completed && styles.cardCompleted]}>
             <View style={styles.cardContent}>
               {item.photoUri && <Image source={{ uri: item.photoUri }} style={styles.taskImage} />}
@@ -338,7 +245,7 @@ export default function TodoScreen() {
                   <View style={styles.locationContainer}>
                     <Ionicons name="location" size={12} color="#FFB6D9" />
                     <Text style={styles.taskSub}>
-                      {nombresPorTarea[item.id] ?? `${item.location.latitude.toFixed(2)}, ${item.location.longitude.toFixed(2)}`}
+                      {locationNames[item.id] ?? `${item.location.latitude.toFixed(2)}, ${item.location.longitude.toFixed(2)}`}
                     </Text>
                   </View>
                 )}
@@ -353,7 +260,7 @@ export default function TodoScreen() {
                 <Ionicons name="pencil-outline" size={24} color="#FFB6D9" />
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => marcarCompletada(item.id, item.completed)}
+                onPress={() => handleToggle(item)}
                 style={styles.actionButton}
               >
                 <Ionicons
@@ -363,7 +270,7 @@ export default function TodoScreen() {
                 />
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => eliminarTarea(item.id)}
+                onPress={() => handleDelete(item.id)}
                 style={styles.actionButton}
               >
                 <Ionicons name="trash-outline" size={24} color="#FF1493" />

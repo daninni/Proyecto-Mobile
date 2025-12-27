@@ -1,6 +1,8 @@
 import { FontAwesome } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
-import { Tabs, useLocalSearchParams } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
+import { ActivityIndicator, View } from 'react-native';
+import { useAuth } from '@/context/auth-context';
 import LogoutButton from '../LogoutButton';
 
 export default function TabLayout() {
@@ -9,13 +11,18 @@ export default function TabLayout() {
     'Comfortaa-Medium': require('../../assets/fonts/Comfortaa-Medium.ttf'),
   });
 
-  const { userEmail } = useLocalSearchParams();
-  
-  // useremail a string
-  const emailString = userEmail ? String(userEmail) : '';
+  const { token, loading, userEmail } = useAuth();
 
-  if (!fontsLoaded) {
-    return null;
+  if (loading || !fontsLoaded) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color="#FF69B4" />
+      </View>
+    );
+  }
+
+  if (!token) {
+    return <Redirect href="/login" />;
   }
   
   const headerTheme = {
@@ -50,7 +57,7 @@ export default function TabLayout() {
           
           ...headerTheme, 
           
-          href: { pathname: '/(tabs)', params: { userEmail: emailString } },
+          href: { pathname: '/(tabs)', params: { userEmail } },
           tabBarIcon: ({ color }) => <FontAwesome name="home" color={color} size={24} />,
         }}
       />
@@ -63,7 +70,7 @@ export default function TabLayout() {
           
           ...headerTheme, 
           
-          href: { pathname: '/(tabs)/todo', params: { userEmail: emailString } },
+          href: { pathname: '/(tabs)/todo', params: { userEmail } },
           tabBarIcon: ({ color }) => <FontAwesome name="list" color={color} size={24} />,
         }}
       />
@@ -76,7 +83,7 @@ export default function TabLayout() {
           
           ...headerTheme, 
           
-          href: { pathname: '/(tabs)/profile', params: { userEmail: emailString } },
+          href: { pathname: '/(tabs)/profile', params: { userEmail } },
           tabBarIcon: ({ color }) => <FontAwesome name="user" color={color} size={24} />,
         }}
       />

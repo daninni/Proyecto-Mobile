@@ -1,4 +1,4 @@
-import React, { createContext, useState, ReactNode } from 'react';
+import React, { createContext, useEffect, useState, ReactNode } from 'react';
 import { authService } from '@/services/auth-service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -16,7 +16,29 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [token, setToken] = useState<string | null>(null);
     const [userEmail, setUserEmail] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const rehydrateSession = async () => {
+            try {
+                const [storedToken, storedEmail] = await Promise.all([
+                    AsyncStorage.getItem('token'),
+                    AsyncStorage.getItem('userEmail'),
+                ]);
+
+                if (storedToken) {
+                    setToken(storedToken);
+                }
+                if (storedEmail) {
+                    setUserEmail(storedEmail);
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        rehydrateSession();
+    }, []);
 
     const login = async (email: string, password: string) => {
         setLoading(true);
@@ -48,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(null);
         setUserEmail(null);
         await AsyncStorage.removeItem('token');
-        await AsyncStorage.removeItem('userEmail');  // ← AGREGAR
+        await AsyncStorage.removeItem('userEmail');
     };
 
     return (
